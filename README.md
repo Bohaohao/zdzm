@@ -4,11 +4,21 @@
 
 ## 安装
 
+**macOS / Linux**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Bohaohao/zdzm/main/install.sh | bash
 ```
 
-或手动：
+**Windows（PowerShell）**
+
+```powershell
+irm https://raw.githubusercontent.com/Bohaohao/zdzm/main/install.ps1 | iex
+```
+
+需要 Python 3.9+。安装时会自动装 pipx，不需要管理员权限。
+
+**手动安装（三平台通用）**
 
 ```bash
 pipx install git+https://github.com/Bohaohao/zdzm.git
