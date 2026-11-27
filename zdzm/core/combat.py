@@ -15,6 +15,13 @@ from zdzm.data import monsters as MS
 DEF_K = 400.0      # 防御曲线常数：def/(def+K) 为减伤比例，上限 75%
 DECAY_INTERVAL = 0.5
 RESPAWN_DELAY = 0.4
+HEAL_INTERVAL = 5.0      # 通用被动「回春」每 5 秒结算一次
+
+
+def _res_gen(p):
+    """归元：资源获取倍率（破妄 = 生势）。"""
+    from zdzm.data import common_passives as CP
+    return CP.multipliers(p)["res_gen"]
 
 
 class Battle:
@@ -119,6 +126,20 @@ class Battle:
             self.tl.push(now + 0.2, "ready", actor=p["id"])
             return
 
+        # 回春：每 5 秒回一次最大生命百分比
+        from zdzm.data import common_passives as CP
+        heal_pct = CP.multipliers(p)["heal"]
+        if heal_pct > 0:
+            due = p.get("next_heal_at", 0)
+            if now >= due:
+                p["next_heal_at"] = now + HEAL_INTERVAL
+                if p["hp"] < p["max_hp"]:
+                    amt = int(p["max_hp"] * heal_pct)
+                    if amt > 0:
+                        p["hp"] = min(p["max_hp"], p["hp"] + amt)
+                        self._emit("heal", src=p["id"], value=amt,
+                                   hp_after=p["hp"], max_hp=p["max_hp"])
+
         key = self.ai.choose(self, p) if self.ai else None
         if key:
             self._start_skill(p, key)
@@ -148,10 +169,10 @@ class Battle:
         seg = p["combo"]
 
         dmg, crit = self._deal_damage(p, m)
-        gain = cls["combo_gain"][seg] * A.resource_gain_mult(p)
+        gain = cls["combo_gain"][seg] * A.resource_gain_mult(p) * _res_gen(p)
         before = p["resource"]
         gain = int(round(gain))
-        p["resource"] = min(cls["resource_max"], before + gain)
+        p["resource"] = min(p.get("resource_max", cls["resource_max"]), before + gain)
         overflow = before + gain - p["resource"]
 
         p["combo"] = (seg + 1) % 3
@@ -188,7 +209,7 @@ class Battle:
             self._apply_p05(p, cost)
             refund = A.cost_refund(p)
             if refund:
-                p["resource"] = min(cls["resource_max"], p["resource"] + refund)
+                p["resource"] = min(p.get("resource_max", cls["resource_max"]), p["resource"] + refund)
             self._emit("spend", src=p["id"], cost=cost, refund=refund,
                        resource=p["resource"])
 
@@ -213,7 +234,7 @@ class Battle:
         gain = sk["gain"][lv - 1]
         if sk["hits"] > 1:
             gain = gain * sk["hits"] + sk.get("gain_bonus", [0] * 5)[lv - 1]
-        gain = gain * A.resource_gain_mult(p)
+        gain = gain * A.resource_gain_mult(p) * _res_gen(p)
         if p["p01_bonus"] and now < p["p01_until"]:
             gain += p["p01_bonus"]
             p["p01_bonus"] = 0
@@ -221,7 +242,7 @@ class Battle:
         if gain:
             before = p["resource"]
             gain = int(round(gain))
-            p["resource"] = min(cls["resource_max"], before + gain)
+            p["resource"] = min(p.get("resource_max", cls["resource_max"]), before + gain)
             overflow = before + gain - p["resource"]
 
         # P06 破隙连裁：洞明耗势留下破隙，下一个不同耗势消耗
@@ -232,7 +253,7 @@ class Battle:
                 bonus = total * ps6["dmg"][lv6 - 1] / 100.0
                 total = int(total + bonus)
                 refund6 = ps6["refund"][lv6 - 1]
-                p["resource"] = min(cls["resource_max"], p["resource"] + refund6)
+                p["resource"] = min(p.get("resource_max", cls["resource_max"]), p["resource"] + refund6)
                 if lv6 >= 5:
                     p["cd"]["C01_A06"] = max(now, p["cd"].get("C01_A06", 0) - ps6["mastery_cd"])
                 p["p06_last"] = None
@@ -421,7 +442,7 @@ class Battle:
     def _check_realm(self):
         p = self.player
         cls = C.CLASSES[p["cls"]]
-        want = p["resource"] >= cls["realm_threshold"] + A.realm_threshold_delta(p)
+        want = p["resource"] >= p.get("realm_threshold", cls["realm_threshold"]) + A.realm_threshold_delta(p)
         if want and not p["realm"]:
             p["realm"] = True
             self._emit("realm", src=p["id"], state="enter",

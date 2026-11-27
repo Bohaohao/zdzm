@@ -120,9 +120,12 @@ def recalc(a):
     from zdzm.data import common_passives as CP
     cm = CP.multipliers(a)
     hp *= cm["hp"]
-    atk *= cm["atk"]
-    df *= cm["def"]
     crit += cm["crit"]
+
+    # 资源上限按职业兑现（破妄=战势）；洞明阈值同步抬高，避免变相变强
+    base_max = cls["resource_max"]
+    a["resource_max"] = round(base_max * cm["res_max"])
+    a["realm_threshold"] = round(cls["realm_threshold"] * cm["res_max"])
 
     a["max_hp"] = round(hp)
     a["atk"] = round(atk)
@@ -130,7 +133,7 @@ def recalc(a):
     a["mdef"] = round(mdf)
     a["aps"] = cls["aps"]
     a["crit"] = round(crit, 1)
-    a["crit_mult"] = cls["crit_mult"] + cm["cdmg"]
+    a["crit_mult"] = cls["crit_mult"]
     if a.get("hp", 0) > a["max_hp"]:
         a["hp"] = a["max_hp"]
     return a

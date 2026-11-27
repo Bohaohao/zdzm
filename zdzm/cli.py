@@ -128,12 +128,10 @@ def show_common(p):
     lines = []
     for c0 in CP.all_of():
         lv = CP.level_of(p, c0["key"])
-        val = lv * c0["per"]
-        unit = c0["unit"]
-        shown = ("%d%s" % (round(val * 100), unit)) if unit == "%" else ("%d%s" % (round(val), unit))
+        shown = CP.label(c0, lv)
         price = CP.cost_of(lv)
         tail = ("升级 %d 金" % price) if price is not None else c("已满", "gold")
-        lines.append("%-6s %d/5   %s +%s   %s" % (
+        lines.append("%-6s %d/5   %s %s   %s" % (
             c0["name"], lv, c0["desc"], shown, tail))
     lines.append("-")
     total = sum(CP.cost_of(CP.level_of(p, c0["key"])) or 0 for c0 in CP.all_of())
@@ -161,11 +159,10 @@ def common_menu(p):
         for i, c0 in enumerate(rows):
             lv = CP.level_of(p, c0["key"])
             mark = "▶" if i == idx else " "
-            val = lv * c0["per"]
-            shown = ("%d%s" % (round(val * 100), c0["unit"])) if c0["unit"] == "%" else ("%d%s" % (round(val), c0["unit"]))
+            shown = CP.label(c0, lv)
             price = CP.cost_of(lv)
             tail = c("升级 %d" % price, "green") if price is not None else c("已满", "gold")
-            line = "  %s %s %d/5  %s +%s   %s" % (
+            line = "  %s %s %d/5  %s %s   %s" % (
                 mark, pad(c0["name"], 5), lv, c0["desc"], shown, tail)
             print(c(line, "bold") if i == idx else line)
         print(c("  ↑↓ 选择   回车 升级   q 返回" if not toast else "  " + toast,
