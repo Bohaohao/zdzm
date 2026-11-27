@@ -122,10 +122,16 @@ def recalc(a):
     hp *= cm["hp"]
     crit += cm["crit"]
 
-    # 资源上限按职业兑现（破妄=战势）；洞明阈值同步抬高，避免变相变强
+    # 资源上限按职业兑现（破妄=战势）
     base_max = cls["resource_max"]
     a["resource_max"] = round(base_max * cm["res_max"])
-    a["realm_threshold"] = round(cls["realm_threshold"] * cm["res_max"])
+    kind = cls.get("resource_kind", "pool")
+    if kind == "threshold":
+        # 阈值型：上限提高必须同步抬高阈值，否则等于变相降低触发难度
+        a["realm_threshold"] = round(cls["realm_threshold"] * cm["res_max"])
+    else:
+        # 池型：上限就是可用量，没有阈值概念
+        a["realm_threshold"] = cls.get("realm_threshold", 0)
 
     a["max_hp"] = round(hp)
     a["atk"] = round(atk)

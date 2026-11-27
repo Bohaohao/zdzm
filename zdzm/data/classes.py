@@ -18,6 +18,9 @@ CLASSES = {
         "weapon": "长兵",
         "resource": "zhan",
         "resource_name": "战势",
+        # threshold：资源涨到阈值触发状态（战势→洞明），上限提高时阈值同步
+        # pool：资源是消耗池（法力），上限提高不影响任何阈值
+        "resource_kind": "threshold",
         "resource_max": 100,
         "realm_name": "洞明",
         "realm_threshold": 80,          # 策划案 §3.5：释放前战势达到 80 进入洞明
