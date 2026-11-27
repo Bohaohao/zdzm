@@ -35,21 +35,30 @@ if (-not $py) {
 }
 Say "    $pyLabel"
 
-# ---------- 1.5 清理旧版 pipx 安装 ----------
-# Windows 上 .exe 优先于 .bat，pipx 的 zdzm.exe 会抢在绿色安装前面
-$pipxCmd = Get-Command pipx -ErrorAction SilentlyContinue
-if ($pipxCmd) {
-    $listed = & $pipxCmd.Source list --short 2>$null
-    if ($listed -match '(^|\s)zdzm(\s|$)') {
-        Say "==> 卸载旧版（pipx）"
-        & $pipxCmd.Source uninstall zdzm 2>$null
+# ---------- 1.5 强制清理旧版 ----------
+# 不依赖 pipx 命令：直接删 venv 和 shim。
+# Windows 上 .exe 优先于 .bat，pipx 的 zdzm.exe 会一直抢在绿色安装前面。
+Say "==> 清理旧版"
+$oldVenvs = @(
+    (Join-Path $env:LOCALAPPDATA "pipx\pipx\venvs\zdzm"),
+    (Join-Path $env:USERPROFILE ".local\pipx\venvs\zdzm")
+)
+foreach ($v in $oldVenvs) {
+    if (Test-Path $v) {
+        Remove-Item $v -Recurse -Force -ErrorAction SilentlyContinue
+        Say "    已删除 $v"
     }
 }
-# 兜底：清掉可能残留的 shim
 foreach ($ext in @("exe", "cmd", "bat")) {
     $f = Join-Path $BinDir "zdzm.$ext"
-    if (Test-Path $f) { Remove-Item $f -Force -ErrorAction SilentlyContinue }
+    if (Test-Path $f) {
+        Remove-Item $f -Force -ErrorAction SilentlyContinue
+        Say "    已删除 zdzm.$ext"
+    }
 }
+# 若 pipx 还能用，顺手清掉它的记录，避免 list 里留残影
+$pipxCmd = Get-Command pipx -ErrorAction SilentlyContinue
+if ($pipxCmd) { & $pipxCmd.Source uninstall zdzm 2>$null | Out-Null }
 
 # ---------- 2. 下载 zip ----------
 Say "==> 下载源码"
