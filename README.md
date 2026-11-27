@@ -5,13 +5,13 @@
 ## 安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/你的用户名/zdzm/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Bohaohao/zdzm/main/install.sh | bash
 ```
 
 或手动：
 
 ```bash
-pipx install git+https://github.com/你的用户名/zdzm.git
+pipx install git+https://github.com/Bohaohao/zdzm.git
 ```
 
 ## 使用

@@ -13,7 +13,7 @@ authors = [{ name = "eazybiz" }]
 keywords = ["game", "terminal", "rpg", "idle"]
 
 [project.urls]
-Homepage = "https://github.com/你的用户名/zdzm"
+Homepage = "https://github.com/Bohaohao/zdzm"
 
 [project.scripts]
 zdzm = "zdzm.cli:main"

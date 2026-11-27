@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-REPO="${ZDZM_REPO:-https://github.com/你的用户名/zdzm.git}"
+REPO="${ZDZM_REPO:-https://github.com/Bohaohao/zdzm.git}"
 
 say() { printf "\033[36m%s\033[0m\n" "$*"; }
 err() { printf "\033[31m%s\033[0m\n" "$*" >&2; }
