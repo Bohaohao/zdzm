@@ -45,15 +45,23 @@ $oldVenvs = @(
 )
 foreach ($v in $oldVenvs) {
     if (Test-Path $v) {
-        Remove-Item $v -Recurse -Force -ErrorAction SilentlyContinue
-        Say "    已删除 $v"
+        try {
+            Remove-Item $v -Recurse -Force -ErrorAction Stop
+            Say "    已删除 $v"
+        } catch {
+            Say "    跳过（受保护）：$v"
+        }
     }
 }
 foreach ($ext in @("exe", "cmd", "bat")) {
     $f = Join-Path $BinDir "zdzm.$ext"
     if (Test-Path $f) {
-        Remove-Item $f -Force -ErrorAction SilentlyContinue
-        Say "    已删除 zdzm.$ext"
+        try {
+            Remove-Item $f -Force -ErrorAction Stop
+            Say "    已删除 zdzm.$ext"
+        } catch {
+            Say "    跳过（受保护）：zdzm.$ext"
+        }
     }
 }
 # 若 pipx 还能用，顺手清掉它的记录，避免 list 里留残影
@@ -74,13 +82,24 @@ try {
 }
 
 # ---------- 3. 解压 ----------
+# 注意：不删除安装目录。某些环境有 safe-delete 保护，
+# Remove-Item -Recurse 会 fail-closed 抛异常，导致安装中断。
 Say "==> 解压到 $InstallDir"
-if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
+if (Test-Path $tmpDir) {
+    try { Remove-Item $tmpDir -Recurse -Force -ErrorAction Stop } catch { }
+}
 Expand-Archive -Path $tmpZip -DestinationPath $tmpDir -Force
-if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
-Move-Item (Join-Path $tmpDir "zdzm-main") $InstallDir
-Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue
-Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+
+$src = Join-Path $tmpDir "zdzm-main"
+if (Test-Path $InstallDir) {
+    Say "    已有安装，覆盖更新"
+    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+    Copy-Item (Join-Path $src "*") $InstallDir -Recurse -Force
+} else {
+    Move-Item $src $InstallDir
+}
+try { Remove-Item $tmpZip -Force -ErrorAction Stop } catch { }
+try { Remove-Item $tmpDir -Recurse -Force -ErrorAction Stop } catch { }
 
 # ---------- 4. 启动器 ----------
 Say "==> 创建启动器"
