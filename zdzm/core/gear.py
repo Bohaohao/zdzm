@@ -68,14 +68,58 @@ def equip(p, item, slot=None):
 
 
 def try_equip(p, item):
-    """捡到装备时的自动判断：有提升就穿。返回 (是否穿上, 换下的)。"""
-    slot, g = best_slot(p, item)
-    if slot is None:
+    """只在槽位为空时自动装备。已有装备一律不自动替换。"""
+    targets = targets_for(p, item)
+    empty = [x for x in targets if not p["equipped"].get(x)]
+    if not empty:
         return False, None
-    if g > 0.01:
-        old = equip(p, item, slot)
-        return True, old
-    return False, None
+    old = equip(p, item, empty[0])
+    return True, old
+
+
+# 属性权重：用于背包排序与一键换装的粗略比较
+SCORE_WEIGHT = {"atk": 3.0, "def": 1.2, "hp": 0.25, "crit": 8.0}
+
+
+def score(item):
+    """装备综合评分（provisional，仅用于排序与"更好"判断）。"""
+    w = SCORE_WEIGHT.get(item.get("main"), 1.0)
+    return round(item.get("value", 0) * w
+                 + item.get("quality", 0) * 8
+                 + item.get("plus", 0) * 5
+                 + item.get("ilvl", 0) * 1.5, 1)
+
+
+def equip_best(p):
+    """把背包里比身上更好的都换上。返回 (件数, 明细)。"""
+    moved = []
+    for slot in SLOT_ORDER:
+        cur = p["equipped"].get(slot)
+        base = slot.rstrip("0123456789")
+        cand = None
+        for it in p["bag"]:
+            if it.get("slot") != base:
+                continue
+            if cand is None or score(it) > score(cand):
+                cand = it
+        if cand is None:
+            continue
+        if cur is None or score(cand) > score(cur):
+            p["bag"].remove(cand)
+            if cur:
+                p["bag"].append(cur)
+            p["equipped"][slot] = cand
+            moved.append((slot, cand, cur))
+    if moved:
+        recalc(p)
+    return moved
+
+
+def sorted_bag(p):
+    """背包按评分降序；同分按品质、物品等级降序。"""
+    return sorted(p["bag"],
+                  key=lambda it: (score(it), it.get("quality", 0), it.get("ilvl", 0)),
+                  reverse=True)
 
 
 def sell_price(item):

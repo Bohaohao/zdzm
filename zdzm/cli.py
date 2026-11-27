@@ -126,20 +126,30 @@ def show_gear(p):
 def show_bag(p):
     if not p["bag"]:
         return panel("背包", [c("空空如也", "gray")])
+    bag = gear.sorted_bag(p)
     base = gear.power(p)
     lines = []
-    for i, it in enumerate(p["bag"][:20]):
+    for i, it in enumerate(bag[:20]):
         slot, g = gear.best_slot(p, it)
-        mark = c("↑", "green") if g > 0.01 else c("↓", "gray")
-        lines.append("%s %s %s" % (
-            ("[%2d]" % i), pad(gear.equip_line(it), 30),
-            c("%s%d" % (mark, int(gear.power(p) + g)), "green" if g > 0.01 else "gray")))
-    if len(p["bag"]) > 20:
-        lines.append(c("…… 还有 %d 件" % (len(p["bag"]) - 20), "gray"))
+        if it.get("locked"):
+            mark = c("锁", "gold")
+        elif g > 0.01:
+            mark = c("↑", "green")
+        else:
+            mark = c("↓", "gray")
+        score = int(gear.score(it))
+        lines.append("%s %s %s %s" % (
+            ("[%2d]" % i), mark, pad(gear.equip_line(it), 28),
+            c("评分%d  %s" % (score, "+%d" % int(g) if g > 0.01 else ""),
+              "green" if g > 0.01 else "gray")))
+    if len(bag) > 20:
+        lines.append(c("…… 还有 %d 件" % (len(bag) - 20), "gray"))
     lines.append("-")
-    lines.append("共 %d 件  全部卖 %d 金币" % (
-        len(p["bag"]), sum(gear.sell_price(x) for x in p["bag"])))
-    return panel("背包", lines)
+    locked_g = sum(gear.sell_price(x) for x in p["bag"] if not x.get("locked"))
+    lines.append("共 %d 件（锁定 %d）  可卖 %d 金币" % (
+        len(bag), sum(1 for x in p["bag"] if x.get("locked")), locked_g))
+    lines.append(c("sell q0..q4 按品质批量卖   lock N 锁定   wearbest 一键换装", "gray"))
+    return panel("背包", lines, width=62)
 
 
 HELP_GROUPS = [
@@ -162,7 +172,11 @@ HELP_GROUPS = [
     ]),
     ("物品", [
         ("equip 3", "穿背包第 3 件"),
-        ("sell 3 / all", "卖单件 / 全卖"),
+        ("wearbest", "一键穿上更好的"),
+        ("sell 3", "卖第 3 件"),
+        ("sell q0-q4", "按品质批量卖"),
+        ("sell all", "卖全部（跳过锁定）"),
+        ("lock / unlock 3", "锁定 / 解锁，锁后不可卖"),
     ]),
     ("系统", [
         ("save", "存档"),
@@ -930,22 +944,82 @@ def main():
 
         if cmd == "sell":
             if not arg:
-                print(c("  用法：sell <编号> / sell all", "red"))
+                print(c("  用法：sell <编号> | sell q<0-4> | sell all", "red"))
+                print(c("        q0普通 q1精良 q2稀有 q3史诗 q4传说", "gray"))
                 continue
+
+            # 按品质批量卖（跳过锁定）
+            if arg[0].startswith("q") and arg[0][1:].isdigit():
+                q = int(arg[0][1:])
+                if q > 4:
+                    print(c("  品质只有 0-4", "red"))
+                    continue
+                sold = [x for x in p["bag"] if x.get("quality") == q and not x.get("locked")]
+                locked = [x for x in p["bag"] if x.get("quality") == q and x.get("locked")]
+                g = sum(gear.sell_price(x) for x in sold)
+                for x in sold:
+                    p["bag"].remove(x)
+                p["gold"] = p.get("gold", 0) + g
+                msg = "  卖了 %d 件%s，+%d 金币" % (
+                    len(sold), gear.QUALITY_NAMES[q], g)
+                if locked:
+                    msg += c("（%d 件锁定跳过）" % len(locked), "gray")
+                print(c(msg, "green") if sold else c("  没有可卖的同品质装备", "gray"))
+                continue
+
             if arg[0] == "all":
-                g = sum(gear.sell_price(x) for x in p["bag"])
-                n = len(p["bag"])
+                sold = [x for x in p["bag"] if not x.get("locked")]
+                locked = [x for x in p["bag"] if x.get("locked")]
+                g = sum(gear.sell_price(x) for x in sold)
+                for x in sold:
+                    p["bag"].remove(x)
                 p["gold"] = p.get("gold", 0) + g
-                p["bag"] = []
-                print(c("  卖了 %d 件，+%d 金币" % (n, g), "green"))
+                msg = "  卖了 %d 件，+%d 金币" % (len(sold), g)
+                if locked:
+                    msg += c("（%d 件锁定跳过）" % len(locked), "gray")
+                print(c(msg, "green"))
                 continue
-            if arg[0].isdigit() and 0 <= int(arg[0]) < len(p["bag"]):
-                it = p["bag"].pop(int(arg[0]))
-                g = gear.sell_price(it)
-                p["gold"] = p.get("gold", 0) + g
-                print(c("  卖了 %s，+%d 金币" % (it["name"], g), "green"))
-                continue
+
+            if arg[0].isdigit():
+                idx = int(arg[0])
+                bag = gear.sorted_bag(p)
+                if 0 <= idx < len(bag):
+                    it = bag[idx]
+                    if it.get("locked"):
+                        print(c("  该装备已锁定，先 unlock %d" % idx, "red"))
+                        continue
+                    p["bag"].remove(it)
+                    g = gear.sell_price(it)
+                    p["gold"] = p.get("gold", 0) + g
+                    print(c("  卖了 %s，+%d 金币" % (it["name"], g), "green"))
+                    continue
             print(c("  编号不对", "red"))
+            continue
+
+        if cmd in ("lock", "unlock"):
+            if not arg or not arg[0].isdigit():
+                print(c("  用法：lock <编号> / unlock <编号>", "red"))
+                continue
+            idx = int(arg[0])
+            bag = gear.sorted_bag(p)
+            if 0 <= idx < len(bag):
+                it = bag[idx]
+                it["locked"] = (cmd == "lock")
+                print(c("  %s %s" % ("已锁定" if cmd == "lock" else "已解锁", it["name"]),
+                        "green"))
+            else:
+                print(c("  编号不对", "red"))
+            continue
+
+        if cmd == "wearbest":
+            moved = gear.equip_best(p)
+            if not moved:
+                print(c("  没有更好的装备了", "gray"))
+                continue
+            for slot, new_it, old_it in moved:
+                print(c("  %s → %s" % (
+                    gear.SLOT_NAMES.get(slot, slot), new_it["name"]), "green"))
+            print(c("  共换 %d 件，战力 %.0f" % (len(moved), gear.power(p)), "green"))
             continue
 
         if cmd == "save":
