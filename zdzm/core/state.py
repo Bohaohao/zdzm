@@ -64,6 +64,7 @@ def make_player(cls_key="C01", level=1, actor_id="p1"):
         "artifact": None,
         "artifacts_owned": [],
         "materials": {},
+        "common": {},                   # 通用被动 {key: level}
         "unlocked": [],
         "instance_clears": [],
     }
@@ -115,13 +116,21 @@ def recalc(a):
         hp += pa.get("hp", 0)
         df += pa.get("def", 0)
 
+    # 通用被动（百分比，最后乘）——所有职业共享的面板属性
+    from zdzm.data import common_passives as CP
+    cm = CP.multipliers(a)
+    hp *= cm["hp"]
+    atk *= cm["atk"]
+    df *= cm["def"]
+    crit += cm["crit"]
+
     a["max_hp"] = round(hp)
     a["atk"] = round(atk)
     a["def"] = round(df)
     a["mdef"] = round(mdf)
     a["aps"] = cls["aps"]
     a["crit"] = round(crit, 1)
-    a["crit_mult"] = cls["crit_mult"]
+    a["crit_mult"] = cls["crit_mult"] + cm["cdmg"]
     if a.get("hp", 0) > a["max_hp"]:
         a["hp"] = a["max_hp"]
     return a

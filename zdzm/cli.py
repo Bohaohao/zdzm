@@ -26,6 +26,7 @@ import zdzm.ui.menu as MENU
 from zdzm.ui.menu import menu
 import zdzm.ui.log as L
 from zdzm.data import collect as COLD
+from zdzm.data import common_passives as CP
 from zdzm.data.skills import SKILLS, PASSIVES
 from zdzm.data import artifacts as A
 
@@ -121,6 +122,72 @@ def show_gear(p):
     lines.append("-")
     lines.append("战力 %d" % gear.power(p))
     return panel("装备", lines)
+
+
+def show_common(p):
+    lines = []
+    for c0 in CP.all_of():
+        lv = CP.level_of(p, c0["key"])
+        val = lv * c0["per"]
+        unit = c0["unit"]
+        shown = ("%d%s" % (round(val * 100), unit)) if unit == "%" else ("%d%s" % (round(val), unit))
+        price = CP.cost_of(lv)
+        tail = ("升级 %d 金" % price) if price is not None else c("已满", "gold")
+        lines.append("%-6s %d/5   %s +%s   %s" % (
+            c0["name"], lv, c0["desc"], shown, tail))
+    lines.append("-")
+    total = sum(CP.cost_of(CP.level_of(p, c0["key"])) or 0 for c0 in CP.all_of())
+    lines.append("金币 %d   全部升一级需 %d" % (p.get("gold", 0), total))
+    return panel("通用被动", lines, width=58)
+
+
+def common_menu(p):
+    if not sys.stdin.isatty():
+        print(show_common(p))
+        return
+    idx = 0
+    first = True
+    toast = ""
+    while True:
+        rows = CP.all_of()
+        n = len(rows)
+        height = n + 3
+        if not first:
+            sys.stdout.write("\033[%dA" % height)
+            sys.stdout.write("\033[J")
+        first = False
+        print("  " + c("◆ 通用被动", "cyan") + "   " +
+              c("金币 %d" % p.get("gold", 0), "gold"))
+        for i, c0 in enumerate(rows):
+            lv = CP.level_of(p, c0["key"])
+            mark = "▶" if i == idx else " "
+            val = lv * c0["per"]
+            shown = ("%d%s" % (round(val * 100), c0["unit"])) if c0["unit"] == "%" else ("%d%s" % (round(val), c0["unit"]))
+            price = CP.cost_of(lv)
+            tail = c("升级 %d" % price, "green") if price is not None else c("已满", "gold")
+            line = "  %s %s %d/5  %s +%s   %s" % (
+                mark, pad(c0["name"], 5), lv, c0["desc"], shown, tail)
+            print(c(line, "bold") if i == idx else line)
+        print(c("  ↑↓ 选择   回车 升级   q 返回" if not toast else "  " + toast,
+                "gray" if not toast else "green"))
+        sys.stdout.flush()
+        toast = ""
+
+        key = MENU._read_key()
+        if key == "up":
+            idx = (idx - 1) % n
+        elif key == "down":
+            idx = (idx + 1) % n
+        elif key in ("enter", " "):
+            ok, price, nl = CP.upgrade(p, rows[idx]["key"])
+            if ok:
+                recalc(p)
+                toast = "%s 升到 %d 级，花费 %d 金币" % (rows[idx]["name"], nl, price)
+            else:
+                toast = "金币不足（需要 %d）" % price if price else "已满级"
+        elif key in ("back", "quit"):
+            MENU.clear_menu()
+            return
 
 
 def bag_menu(p):
@@ -313,6 +380,7 @@ HELP_GROUPS = [
         ("skills / sk", "技能加点 · ↑↓ 选，回车升，d 降"),
         ("loadout", "技能装配 · ↑↓ 选槽，回车换"),
         ("learn A06|all|auto", "学单个 / 全学 / 一键推荐"),
+        ("common", "通用被动 · 金币升级"),
     ]),
     ("物品", [
         ("equip 3", "穿背包第 3 件"),
@@ -1033,6 +1101,10 @@ def main():
 
         if cmd in ("gear", "g"):
             print(show_gear(p))
+            continue
+
+        if cmd in ("common", "cp", "gp"):
+            common_menu(p)
             continue
 
         if cmd in ("bag", "b"):
