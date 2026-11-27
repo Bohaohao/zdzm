@@ -10,6 +10,9 @@ from zdzm.core.state import recalc
 
 # 玩家可用的槽位顺序（展示用）
 SLOT_ORDER = ["weapon", "helm", "body", "bracer", "belt", "boots", "amulet", "ring1", "ring2"]
+
+BAG_MAX = 100          # 5 页 × 20 格
+BAG_PAGE = 20
 SLOT_NAMES = {
     "weapon": "武器", "helm": "头盔", "body": "护甲", "bracer": "护腕",
     "belt": "腰带", "boots": "靴", "amulet": "项链",

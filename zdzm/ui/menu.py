@@ -17,6 +17,43 @@ def _c(t, k=None):
     return CL.get(k, "") + str(t) + CL["reset"]
 
 
+def cursor_pos():
+    """查询光标位置 (row, col)。失败返回 None。"""
+    import select
+    import time
+    sys.stdout.write("\033[6n")
+    sys.stdout.flush()
+    buf = ""
+    end = time.time() + 0.12
+    while time.time() < end:
+        r, _, _ = select.select([sys.stdin], [], [], 0.02)
+        if not r:
+            continue
+        ch = sys.stdin.read(1)
+        buf += ch
+        if ch == "R":
+            break
+    i = buf.find("\033[")
+    j = buf.find("R", i)
+    if i < 0 or j < 0:
+        return None
+    try:
+        row, col = buf[i + 2:j].split(";")
+        return int(row), int(col)
+    except ValueError:
+        return None
+
+
+def mouse_on():
+    sys.stdout.write("\033[?1000h\033[?1006h")
+    sys.stdout.flush()
+
+
+def mouse_off():
+    sys.stdout.write("\033[?1000l\033[?1006l")
+    sys.stdout.flush()
+
+
 def _read_key():
     """读取一个按键，返回 up/down/enter/back/quit/None。"""
     import tty
@@ -28,10 +65,26 @@ def _read_key():
         ch = sys.stdin.read(1)
         if ch == "\x1b":
             seq = sys.stdin.read(2)
+            if seq.startswith("[<"):
+                rest = ""
+                while True:
+                    c2 = sys.stdin.read(1)
+                    rest += c2
+                    if c2 in ("M", "m"):
+                        break
+                try:
+                    b, x, y = rest[:-1].split(";")
+                    return ("mouse", int(b), int(x), int(y), rest[-1] == "M")
+                except ValueError:
+                    return None
             if seq == "[A":
                 return "up"
             if seq == "[B":
                 return "down"
+            if seq == "[C":
+                return "right"
+            if seq == "[D":
+                return "left"
             return "back"
         if ch in ("\r", "\n"):
             return "enter"

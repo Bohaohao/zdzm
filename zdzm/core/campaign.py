@@ -191,17 +191,14 @@ class Campaign:
             self.log_kill(mon, gold, settlements)
 
     def put_bag(self, item):
+        """背包上限 100 格；满了自动把新拾取的卖掉。"""
         p = self.p
-        if len(p["bag"]) < 40:
+        if len(p["bag"]) < gear.BAG_MAX:
             p["bag"].append(item)
             return
-        worst = min(range(len(p["bag"])), key=lambda i: gear.junk_score(p["bag"][i]))
-        if gear.junk_score(item) > gear.junk_score(p["bag"][worst]):
-            old = p["bag"].pop(worst)
-            p["gold"] += gear.sell_price(old)
-            p["bag"].append(item)
-        else:
-            p["gold"] += gear.sell_price(item)
+        g = gear.sell_price(item)
+        p["gold"] = p.get("gold", 0) + g
+        self.say("bag_full", name=item["name"], gold=g)
 
     def gain_xp(self, xp):
         p = self.p

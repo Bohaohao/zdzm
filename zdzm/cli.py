@@ -123,6 +123,150 @@ def show_gear(p):
     return panel("装备", lines)
 
 
+def bag_menu(p):
+    """背包：分页列表 + 底部按钮区，↑↓ 选，字母键操作，←→ 翻页。"""
+    if not sys.stdin.isatty():
+        print(show_bag(p))
+        return
+
+    idx = 0
+    page = 0
+    first = True
+    toast = ""
+    MENU.mouse_on()
+    try:
+        return _bag_loop(p, MENU)
+    finally:
+        MENU.mouse_off()
+
+
+def _bag_loop(p, MENU):
+    idx = 0
+    page = 0
+    first = True
+    toast = ""
+
+    while True:
+        bag = gear.sorted_bag(p)
+        n = len(bag)
+        pages = max(1, (n + gear.BAG_PAGE - 1) // gear.BAG_PAGE)
+        page = max(0, min(page, pages - 1))
+        start = page * gear.BAG_PAGE
+        rows = bag[start:start + gear.BAG_PAGE]
+        if idx < start:
+            idx = start
+        if idx >= start + len(rows):
+            idx = start + max(0, len(rows) - 1)
+
+        height = 1 + max(1, len(rows)) + 4
+        if not first:
+            sys.stdout.write("\033[%dA" % height)
+            sys.stdout.write("\033[J")
+        first = False
+
+        print("  " + c("◆ 背包", "cyan") + "   " +
+              c("%d/%d 格   第 %d/%d 页" % (n, gear.BAG_MAX, page + 1, pages), "gray"))
+        if not rows:
+            print(c("  （空）", "gray"))
+        for i, it in enumerate(rows):
+            gidx = start + i
+            mark = "▶" if gidx == idx else " "
+            lock = c("锁", "gold") if it.get("locked") else " "
+            _, g = gear.best_slot(p, it)
+            arrow = c("↑", "green") if g > 0.01 else c("↓", "gray")
+            line = "  %s[%2d] %s %s %s %s" % (
+                mark, gidx, lock, arrow, pad(gear.equip_line(it), 26),
+                c("评分%d" % int(gear.score(it)), "gray"))
+            print(c(line, "bold") if gidx == idx else line)
+        for _ in range(max(0, gear.BAG_PAGE - len(rows))):
+            print("")
+        print(c("  " + "─" * 58, "gray"))
+        print(c("  [↑↓]选择  [⏎]穿上  [l]锁定  [x]卖出  [←→]翻页  [q]返回", "gray"))
+        print(c("  [1]普通 [2]精良 [3]稀有 [4]史诗 [5]传说 [a]全卖 [w]换装", "gray"))
+        if toast:
+            print(c("  " + toast, "green"))
+        else:
+            print("")
+        sys.stdout.flush()
+        toast = ""
+
+        pos = MENU.cursor_pos()
+        btn_row = pos[0] if pos else 0
+
+        key = MENU._read_key()
+
+        # 鼠标点击 → 折算成对应按钮
+        if isinstance(key, tuple) and key[0] == "mouse":
+            _, btn, mx, my, pressed = key
+            if not pressed:
+                continue
+            key = None
+            if btn_row:
+                if my == btn_row - 3:
+                    btns = ["e", "l", "x", "w", "q"]
+                    i = (mx - 3) // 9
+                    if 0 <= i < len(btns):
+                        key = btns[i]
+                elif my == btn_row - 2:
+                    btns = ["1", "2", "3", "4", "5", "a"]
+                    i = (mx - 3) // 7
+                    if 0 <= i < len(btns):
+                        key = btns[i]
+            if key is None:
+                continue
+        if key == "up":
+            idx = max(0, idx - 1)
+        elif key == "down":
+            idx = min(max(0, n - 1), idx + 1)
+        elif key in ("enter", "e") and rows:
+            it = bag[idx]
+            old = gear.equip(p, it, gear.best_slot(p, it)[0])
+            p["bag"].remove(it)
+            if old:
+                p["bag"].append(old)
+            toast = "穿上 %s" % it["name"]
+        elif key == "l" and rows:
+            it = bag[idx]
+            it["locked"] = not it.get("locked")
+            toast = "%s %s" % ("已锁定" if it["locked"] else "已解锁", it["name"])
+        elif key == "x" and rows:
+            it = bag[idx]
+            if it.get("locked"):
+                toast = "已锁定，先按 l 解锁"
+            else:
+                p["bag"].remove(it)
+                g = gear.sell_price(it)
+                p["gold"] = p.get("gold", 0) + g
+                toast = "卖出 %s +%d 金币" % (it["name"], g)
+        elif key in ("1", "2", "3", "4", "5"):
+            q = int(key) - 1
+            sold = [x for x in p["bag"] if x.get("quality") == q and not x.get("locked")]
+            g = sum(gear.sell_price(x) for x in sold)
+            for x in sold:
+                p["bag"].remove(x)
+            p["gold"] = p.get("gold", 0) + g
+            toast = "卖出 %d 件%s +%d 金币" % (len(sold), gear.QUALITY_NAMES[q], g)
+        elif key == "a":
+            sold = [x for x in p["bag"] if not x.get("locked")]
+            g = sum(gear.sell_price(x) for x in sold)
+            for x in sold:
+                p["bag"].remove(x)
+            p["gold"] = p.get("gold", 0) + g
+            toast = "全部卖出 %d 件 +%d 金币" % (len(sold), g)
+        elif key == "w":
+            moved = gear.equip_best(p)
+            toast = "换上 %d 件，战力 %.0f" % (len(moved), gear.power(p)) if moved else "没有更好的装备"
+        elif key == "left":
+            page = max(0, page - 1)
+            idx = page * gear.BAG_PAGE
+        elif key == "right":
+            page = min(pages - 1, page + 1)
+            idx = page * gear.BAG_PAGE
+        elif key in ("back", "quit"):
+            MENU.clear_menu()
+            return
+
+
 def show_bag(p):
     if not p["bag"]:
         return panel("背包", [c("空空如也", "gray")])
@@ -892,7 +1036,7 @@ def main():
             continue
 
         if cmd in ("bag", "b"):
-            print(show_bag(p))
+            bag_menu(p)
             continue
 
         if cmd in ("push", "run"):
