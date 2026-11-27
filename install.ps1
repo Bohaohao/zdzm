@@ -35,6 +35,22 @@ if (-not $py) {
 }
 Say "    $pyLabel"
 
+# ---------- 1.5 清理旧版 pipx 安装 ----------
+# Windows 上 .exe 优先于 .bat，pipx 的 zdzm.exe 会抢在绿色安装前面
+$pipxCmd = Get-Command pipx -ErrorAction SilentlyContinue
+if ($pipxCmd) {
+    $listed = & $pipxCmd.Source list --short 2>$null
+    if ($listed -match '(^|\s)zdzm(\s|$)') {
+        Say "==> 卸载旧版（pipx）"
+        & $pipxCmd.Source uninstall zdzm 2>$null
+    }
+}
+# 兜底：清掉可能残留的 shim
+foreach ($ext in @("exe", "cmd", "bat")) {
+    $f = Join-Path $BinDir "zdzm.$ext"
+    if (Test-Path $f) { Remove-Item $f -Force -ErrorAction SilentlyContinue }
+}
+
 # ---------- 2. 下载 zip ----------
 Say "==> 下载源码"
 $tmpZip = Join-Path $env:TEMP "zdzm-dl.zip"
