@@ -3,7 +3,10 @@
 
 非交互环境（管道/重定向）自动降级为数字输入。
 """
+import os
 import sys
+
+IS_WIN = (os.name == "nt")
 
 CL = {"reset": "\033[0m", "dim": "\033[2m", "bold": "\033[1m",
       "cyan": "\033[36m", "green": "\033[32m", "gold": "\033[38;5;220m",
@@ -18,7 +21,33 @@ def _c(t, k=None):
 
 
 def _read_key():
-    """读取一个按键，返回 up/down/enter/back/quit/None。"""
+    """读取一个按键，返回 up/down/left/right/enter/back/quit/数字/字母。"""
+    if IS_WIN:
+        return _read_key_win()
+    return _read_key_unix()
+
+
+def _read_key_win():
+    """Windows：msvcrt。方向键是两字节，前缀 \x00 或 \xe0。"""
+    import msvcrt
+    ch = msvcrt.getwch()
+    if ch in ("\x00", "\xe0"):
+        ch2 = msvcrt.getwch()
+        return {"H": "up", "P": "down", "K": "left", "M": "right"}.get(ch2)
+    if ch == "\x1b":
+        return "back"
+    if ch in ("\r", "\n"):
+        return "enter"
+    if ch in ("q", "Q"):
+        return "quit"
+    if ch.isdigit():
+        return ch
+    if ch.isalpha():
+        return ch.lower()
+    return None
+
+
+def _read_key_unix():
     import tty
     import termios
     fd = sys.stdin.fileno()
