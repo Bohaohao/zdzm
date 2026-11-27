@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zdzm"
+version = "0.1.0"
+description = "造梦终端 — 破妄法门·花果山篇，终端挂机 RPG"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "eazybiz" }]
+keywords = ["game", "terminal", "rpg", "idle"]
+
+[project.urls]
+Homepage = "https://github.com/你的用户名/zdzm"
+
+[project.scripts]
+zdzm = "zdzm.cli:main"
+
+[tool.setuptools]
+packages = ["zdzm", "zdzm.core", "zdzm.data", "zdzm.ui"]
+
+[tool.setuptools.package-data]
+"zdzm.data" = ["*.py"]
+
+# sdist 只放打包必需文件。策划案 DESIGN.md、tools/ 一律不进分发包。
+[tool.setuptools.exclude-package-data]
+"*" = ["*.md", "*.json", "*.txt"]
