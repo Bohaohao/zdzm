@@ -960,6 +960,7 @@ def main():
 
         if cmd in ("skills", "sk"):
             skill_menu(p)
+            camp.save_now()
             continue
 
         if cmd == "learn":
@@ -1013,6 +1014,7 @@ def main():
         if cmd in ("loadout", "lo"):
             if not arg:
                 loadout_menu(p)
+                camp.save_now()
                 continue
             if False:
                 print(c("  当前装配：%s" % " ".join(k[-3:] for k in p["loadout"]), "gray"))
@@ -1069,10 +1071,12 @@ def main():
 
         if cmd in ("common", "cp", "gp"):
             common_menu(p)
+            camp.save_now()
             continue
 
         if cmd in ("bag", "b"):
             bag_menu(p)
+            camp.save_now()
             continue
 
         if cmd in ("push", "run"):
@@ -1193,6 +1197,7 @@ def main():
 
         if cmd == "wearbest":
             moved = gear.equip_best(p)
+            camp.save_now()
             if not moved:
                 print(c("  没有更好的装备了", "gray"))
                 continue

@@ -190,17 +190,28 @@ class Campaign:
         if self.log_kill:
             self.log_kill(mon, gold, settlements)
 
+    def save_now(self):
+        """立即落盘。等级 / 技能 / 装备变动后调用。"""
+        try:
+            from zdzm.core import storage
+            storage.save(self.p, self)
+        except Exception:
+            pass
+
     def put_bag(self, item):
         """背包上限 100 格；满了自动把新拾取的卖掉。"""
         p = self.p
         if len(p["bag"]) < gear.BAG_MAX:
             p["bag"].append(item)
+            self.save_now()
             return
         g = gear.sell_price(item)
         p["gold"] = p.get("gold", 0) + g
         self.say("bag_full", name=item["name"], gold=g)
+        self.save_now()
 
     def gain_xp(self, xp):
+        before_level = self.p["level"]
         p = self.p
         p["xp"] = p.get("xp", 0) + xp
         while p["level"] < 60:
@@ -216,6 +227,9 @@ class Campaign:
             gear.auto_advance(p)
             p["hp"] = p["max_hp"]
             p["mp"] = p.get("max_mp", 0)
+
+        if p["level"] != before_level:
+            self.save_now()
 
     # ---------------------------------------------------------------- 关卡推进
     def on_stage_clear(self):
@@ -235,6 +249,7 @@ class Campaign:
                 rk = self.region
                 self.p.setdefault("region_clears", {})
                 self.p["region_clears"][rk] = self.p["region_clears"].get(rk, 0) + 1
+                self.save_now()
                 self.say("region_clear", region=rk,
                          name=Z.REGIONS_BY_KEY[rk]["name"],
                          stages=len(self.region_stages))
