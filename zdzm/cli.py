@@ -193,15 +193,7 @@ def bag_menu(p):
         print(show_bag(p))
         return
 
-    idx = 0
-    page = 0
-    first = True
-    toast = ""
-    MENU.mouse_on()
-    try:
-        return _bag_loop(p, MENU)
-    finally:
-        MENU.mouse_off()
+    return _bag_loop(p, MENU)
 
 
 def _bag_loop(p, MENU):
@@ -254,30 +246,6 @@ def _bag_loop(p, MENU):
         sys.stdout.flush()
         toast = ""
 
-        pos = MENU.cursor_pos()
-        btn_row = pos[0] if pos else 0
-
-        key = MENU._read_key()
-
-        # 鼠标点击 → 折算成对应按钮
-        if isinstance(key, tuple) and key[0] == "mouse":
-            _, btn, mx, my, pressed = key
-            if not pressed:
-                continue
-            key = None
-            if btn_row:
-                if my == btn_row - 3:
-                    btns = ["e", "l", "x", "w", "q"]
-                    i = (mx - 3) // 9
-                    if 0 <= i < len(btns):
-                        key = btns[i]
-                elif my == btn_row - 2:
-                    btns = ["1", "2", "3", "4", "5", "a"]
-                    i = (mx - 3) // 7
-                    if 0 <= i < len(btns):
-                        key = btns[i]
-            if key is None:
-                continue
         if key == "up":
             idx = max(0, idx - 1)
         elif key == "down":
