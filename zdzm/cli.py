@@ -214,7 +214,8 @@ def _bag_loop(p, MENU):
         if idx >= start + len(rows):
             idx = start + max(0, len(rows) - 1)
 
-        height = 1 + max(1, len(rows)) + 4
+        # 固定 25 行：标题 1 + 列表 20 + 分隔 1 + 按钮 2 + toast 1
+        height = gear.BAG_PAGE + 5
         if not first:
             sys.stdout.write("\033[%dA" % height)
             sys.stdout.write("\033[J")
@@ -224,6 +225,8 @@ def _bag_loop(p, MENU):
               c("%d/%d 格   第 %d/%d 页" % (n, gear.BAG_MAX, page + 1, pages), "gray"))
         if not rows:
             print(c("  （空）", "gray"))
+            for _ in range(gear.BAG_PAGE - 1):
+                print("")
         for i, it in enumerate(rows):
             gidx = start + i
             mark = "▶" if gidx == idx else " "
@@ -234,8 +237,9 @@ def _bag_loop(p, MENU):
                 mark, gidx, lock, arrow, pad(gear.equip_line(it), 26),
                 c("评分%d" % int(gear.score(it)), "gray"))
             print(c(line, "bold") if gidx == idx else line)
-        for _ in range(max(0, gear.BAG_PAGE - len(rows))):
-            print("")
+        if rows:
+            for _ in range(max(0, gear.BAG_PAGE - len(rows))):
+                print("")
         print(c("  " + "─" * 58, "gray"))
         print(c("  [↑↓]选择  [⏎]穿上  [l]锁定  [x]卖出  [←→]翻页  [q]返回", "gray"))
         print(c("  [1]普通 [2]精良 [3]稀有 [4]史诗 [5]传说 [a]全卖 [w]换装", "gray"))
