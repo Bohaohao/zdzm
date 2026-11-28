@@ -143,6 +143,10 @@ def common_menu(p):
     if not sys.stdin.isatty():
         print(show_common(p))
         return
+    # 清屏一次，让菜单从顶部开始，避免贴底触发终端滚动
+    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.flush()
+
     idx = 0
     first = True
     toast = ""
@@ -507,6 +511,9 @@ def skill_menu(p):
     if not sys.stdin.isatty():
         print(show_skills(p))
         return
+    # 清屏一次，让菜单从顶部开始，避免贴底触发终端滚动
+    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.flush()
 
     def build():
         rows = []
@@ -605,6 +612,10 @@ def loadout_menu(p):
     if not sys.stdin.isatty():
         print(c("  当前装配：%s" % " ".join(k[-3:] for k in p["loadout"]), "gray"))
         return
+    # 清屏一次，让菜单从顶部开始，避免贴底触发终端滚动
+    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.flush()
+
     slots = [""] * 5
     for i, k in enumerate(p["loadout"][:5]):
         slots[i] = k
@@ -683,6 +694,8 @@ def show_skills(p):
 
 def enter_menu(p, camp):
     """篇章 -> 主线/副本 -> 具体关卡。返回 (kind, key) 或 None。"""
+    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.flush()
     while True:
         ch = menu("选择篇章", [
             ("花果山篇   Lv1-20", "hg", "当前篇章"),
