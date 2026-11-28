@@ -143,9 +143,6 @@ def common_menu(p):
     if not sys.stdin.isatty():
         print(show_common(p))
         return
-    # 清屏一次，让菜单从顶部开始，避免贴底触发终端滚动
-    sys.stdout.write("\033[2J\033[H")
-    sys.stdout.flush()
 
     idx = 0
     first = True
@@ -154,10 +151,7 @@ def common_menu(p):
         rows = CP.all_of()
         n = len(rows)
         height = n + 3
-        if not first:
-            sys.stdout.write("\033[%dA" % height)
-            sys.stdout.write("\033[J")
-        first = False
+        MENU.place(height)
         print("  " + c("◆ 通用被动", "cyan") + "   " +
               c("金币 %d" % p.get("gold", 0), "gold"))
         for i, c0 in enumerate(rows):
@@ -206,10 +200,6 @@ def _bag_loop(p, MENU):
     first = True
     toast = ""
 
-    # 清屏一次，让 25 行的菜单从顶部开始，避免贴底触发终端滚动导致重绘错位
-    sys.stdout.write("\033[2J\033[H")
-    sys.stdout.flush()
-
     while True:
         bag = gear.sorted_bag(p)
         n = len(bag)
@@ -224,10 +214,7 @@ def _bag_loop(p, MENU):
 
         # 固定 25 行：标题 1 + 列表 20 + 分隔 1 + 按钮 2 + toast 1
         height = gear.BAG_PAGE + 5
-        if not first:
-            sys.stdout.write("\033[%dA" % height)
-            sys.stdout.write("\033[J")
-        first = False
+        MENU.place(height)
 
         print("  " + c("◆ 背包", "cyan") + "   " +
               c("%d/%d 格   第 %d/%d 页" % (n, gear.BAG_MAX, page + 1, pages), "gray"))
@@ -511,10 +498,6 @@ def skill_menu(p):
     if not sys.stdin.isatty():
         print(show_skills(p))
         return
-    # 清屏一次，让菜单从顶部开始，避免贴底触发终端滚动
-    sys.stdout.write("\033[2J\033[H")
-    sys.stdout.flush()
-
     def build():
         rows = []
         for k in sorted(SKILLS):
@@ -544,10 +527,7 @@ def skill_menu(p):
         n = len(rows)
         while True:
             height = n + 2      # 标题 1 + 技能 n + 提示 1
-            if not first:
-                sys.stdout.write("\033[%dA" % height)
-                sys.stdout.write("\033[J")
-            first = False
+            MENU.place(height)
             detail = skill_detail(rows[idx][0], rows[idx][2] or 1)
             LW, BW = 30, 42
             inner = BW - 2
@@ -612,21 +592,14 @@ def loadout_menu(p):
     if not sys.stdin.isatty():
         print(c("  当前装配：%s" % " ".join(k[-3:] for k in p["loadout"]), "gray"))
         return
-    # 清屏一次，让菜单从顶部开始，避免贴底触发终端滚动
-    sys.stdout.write("\033[2J\033[H")
-    sys.stdout.flush()
 
     slots = [""] * 5
     for i, k in enumerate(p["loadout"][:5]):
         slots[i] = k
     idx = 0
-    first = True
     while True:
         height = 5 + 2          # 标题 + 5 个槽 + 提示
-        if not first:
-            sys.stdout.write("\033[%dA" % height)
-            sys.stdout.write("\033[J")
-        first = False
+        MENU.place(height)
         print("  " + c("◆ 技能装配", "cyan") + "   " + c("5 个主动槽", "gray"))
         for i in range(5):
             k = slots[i]
@@ -694,8 +667,6 @@ def show_skills(p):
 
 def enter_menu(p, camp):
     """篇章 -> 主线/副本 -> 具体关卡。返回 (kind, key) 或 None。"""
-    sys.stdout.write("\033[2J\033[H")
-    sys.stdout.flush()
     while True:
         ch = menu("选择篇章", [
             ("花果山篇   Lv1-20", "hg", "当前篇章"),

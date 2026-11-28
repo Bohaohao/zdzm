@@ -82,13 +82,28 @@ def _read_key_unix():
 _MENU_LINES = 0
 
 
+def place(height):
+    """把光标移到「底部贴底」的菜单顶部，并清到屏幕末尾。
+
+    每次重绘都调用，菜单固定在窗口底部，不会随内容增长而漂移。
+    """
+    import shutil
+    try:
+        rows = shutil.get_terminal_size((80, 24)).lines
+    except Exception:
+        rows = 24
+    # 留一行给光标，否则最后一行打印完会触发终端 scroll
+    row = max(1, rows - height)
+    sys.stdout.write("\033[%d;1H" % row)
+    sys.stdout.write("\033[J")
+    sys.stdout.flush()
+
+
 def clear_menu():
     """清除当前菜单区域（供下一级或退出时使用）。"""
     global _MENU_LINES
     if _MENU_LINES > 0:
-        sys.stdout.write("\033[%dA" % _MENU_LINES)
-        sys.stdout.write("\033[J")
-        sys.stdout.flush()
+        place(_MENU_LINES)
         _MENU_LINES = 0
 
 
@@ -135,9 +150,7 @@ def menu(title, options, subtitle=None, allow_back=True):
     height = 1 + (1 if subtitle else 0) + n + 1
 
     while True:
-        if _MENU_LINES > 0:
-            sys.stdout.write("\033[%dA" % _MENU_LINES)
-        sys.stdout.write("\033[J")
+        place(height)
         _MENU_LINES = height
         print("  " + _c("◆ " + title, "cyan"))
         if subtitle:
