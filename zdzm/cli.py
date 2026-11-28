@@ -238,10 +238,8 @@ def _bag_loop(p, MENU):
         print(c("  " + "─" * 58, "gray"))
         print(c("  [↑↓]选择  [⏎]穿上  [l]锁定  [x]卖出  [←→]翻页  [q]返回", "gray"))
         print(c("  [1]普通 [2]精良 [3]稀有 [4]史诗 [5]传说 [a]全卖 [w]换装", "gray"))
-        if toast:
-            print(c("  " + toast, "green"))
-        else:
-            print("")
+        # 固定宽度，避免短 toast 残留上一次的长文本
+        print(c("  " + pad(toast, 56), "green") if toast else " " * 58)
         sys.stdout.flush()
         toast = ""
 

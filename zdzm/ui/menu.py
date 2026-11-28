@@ -83,9 +83,10 @@ _MENU_LINES = 0
 
 
 def place(height):
-    """把光标移到「底部贴底」的菜单顶部，并清到屏幕末尾。
+    """把光标移到「底部贴底」的菜单顶部。不清屏。
 
-    每次重绘都调用，菜单固定在窗口底部，不会随内容增长而漂移。
+    每次重绘都调用，菜单固定在窗口底部；由于每次打印固定行数，
+    新内容会直接覆盖旧内容，不需要 [J。
     """
     import shutil
     try:
@@ -95,7 +96,6 @@ def place(height):
     # 留一行给光标，否则最后一行打印完会触发终端 scroll
     row = max(1, rows - height)
     sys.stdout.write("\033[%d;1H" % row)
-    sys.stdout.write("\033[J")
     sys.stdout.flush()
 
 
@@ -103,7 +103,15 @@ def clear_menu():
     """清除当前菜单区域（供下一级或退出时使用）。"""
     global _MENU_LINES
     if _MENU_LINES > 0:
-        place(_MENU_LINES)
+        import shutil
+        try:
+            rows = shutil.get_terminal_size((80, 24)).lines
+        except Exception:
+            rows = 24
+        row = max(1, rows - _MENU_LINES)
+        sys.stdout.write("\033[%d;1H" % row)
+        sys.stdout.write("\033[J")
+        sys.stdout.flush()
         _MENU_LINES = 0
 
 
