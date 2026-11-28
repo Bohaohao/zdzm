@@ -202,6 +202,10 @@ def _bag_loop(p, MENU):
     first = True
     toast = ""
 
+    # 清屏一次，让 25 行的菜单从顶部开始，避免贴底触发终端滚动导致重绘错位
+    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.flush()
+
     while True:
         bag = gear.sorted_bag(p)
         n = len(bag)
