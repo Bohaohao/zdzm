@@ -246,6 +246,7 @@ def _bag_loop(p, MENU):
         sys.stdout.flush()
         toast = ""
 
+        key = MENU._read_key()
         if key == "up":
             idx = max(0, idx - 1)
         elif key == "down":
