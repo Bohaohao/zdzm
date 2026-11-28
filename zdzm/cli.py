@@ -107,8 +107,8 @@ def show_status(p, camp):
         lines.append("副本 %s" % I.get(camp.instance)["name"])
     else:
         lines.append("进度 %s %s   %s" % (camp.stage, st_now["name"], camp.mode))
-    lines.append("已通 %d 关   死亡 %d 次   背包 %d/40" % (
-        len(camp.cleared), camp.deaths, len(p["bag"])))
+    lines.append("已通 %d 关   死亡 %d 次   背包 %d/%d" % (
+        len(camp.cleared), camp.deaths, len(p["bag"]), gear.BAG_MAX))
     return panel("%s Lv.%d" % (C.CLASSES[p["cls"]]["name"], p["level"]), lines)
 
 
