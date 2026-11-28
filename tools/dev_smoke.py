@@ -164,6 +164,26 @@ for cmd, label in seq:
 t.close()
 
 print()
+print("=== D2. 菜单退出无残留 ===")
+t = Term(fresh=True)
+t.send(b"\r"); t.send(b"\r")
+for menu_cmd, expect_lines in [(b"b\r", "背包"), (b"sk\r", "技能加点"),
+                                (b"common\r", "通用被动"), (b"lo\r", "技能装配")]:
+    t.clearbuf()
+    t.send(menu_cmd, 0.5)
+    t.send(b"q", 0.5)          # 不 clearbuf：清屏指令在这一段里
+    erased = b"\x1b[J" in t.buf      # 原始字节，text() 会剥掉 ANSI
+    check("退出 " + expect_lines, erased, "清屏" if erased else "未清除菜单区域")
+# 退出背包后再看 status，不应有背包内容
+t.clearbuf()
+t.send(b"b\r", 0.5); t.send(b"q\r", 0.4)
+t.clearbuf()
+t.send(b"s\r", 0.5)
+txt = t.text()
+check("退出背包后 status 无背包残留", "背包" not in txt or "背包 0/" in txt, "")
+t.close()
+
+print()
 print("=== E. 存档菜单 ===")
 t = Term(fresh=True)
 t.send(b"\r"); t.send(b"\r"); t.send(b"quit\r", 0.4)   # 建 1 个存档

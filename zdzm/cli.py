@@ -837,9 +837,9 @@ def create_character():
                 return new_player(nickname="")
         return None
 
-    MENU.place(9)
+    CH = 8   # 标题 + 空 + 3职业 + 空 + 提示 + 留白
     while True:
-            MENU.place(9)
+            MENU.place(CH)
             print(c("── 创建角色 " + "─" * 42, "cyan"))
             print()
             for i, (k, cls) in enumerate(rows[:9]):
@@ -853,10 +853,12 @@ def create_character():
                 print(c(line, "bold") if i == idx and unlocked else line)
             print()
             print(c("  ↑↓ 选择职业   回车 确认   q 返回", "gray"))
+            print("")
             sys.stdout.flush()
 
             key = MENU._read_key()
             if key in ("back", "quit"):
+                MENU.clear_menu()
                 return None
             if key == "up":
                 idx = (idx - 1) % len(rows)
