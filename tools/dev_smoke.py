@@ -85,7 +85,8 @@ class Term:
 
 print("=== A. 全命令冒烟 ===")
 t = Term(fresh=True)
-t.send(b"1\r")            # 空存档→新建
+t.send(b"\r")             # 空存档→创建界面，确认职业
+t.send(b"\r")             # 默认昵称
 t.clearbuf()
 cmds = [
     (b"status\r", "角色面板"), (b"s\r", "s 别名"),
@@ -123,7 +124,8 @@ menus = [
 ]
 for name, enter, keys in menus:
     t = Term(fresh=True)
-    t.send(b"1\r")
+    t.send(b"\r")             # 创建界面确认
+    t.send(b"\r")             # 默认昵称
     t.clearbuf()
     t.send(enter, 0.6)
     for k in keys:
@@ -135,7 +137,8 @@ for name, enter, keys in menus:
 print()
 print("=== C. enter 三级菜单 ===")
 t = Term(fresh=True)
-t.send(b"1\r")
+t.send(b"\r")
+t.send(b"\r")
 t.clearbuf()
 t.send(b"enter\r", 0.5)
 for k in [b"\x1b[B", b"\x1b[A", b"\r", b"\x1b[B", b"\r", b"\x1b[B", b"\r", b"q",
@@ -148,7 +151,8 @@ t.close()
 print()
 print("=== D. 命令 → 菜单 → 命令 状态切换 ===")
 t = Term(fresh=True)
-t.send(b"1\r")
+t.send(b"\r")
+t.send(b"\r")
 seq = [(b"g\r", "g"), (b"b\r", "b"), (b"q\r", "q退出"), (b"s\r", "s"),
        (b"sk\r", "sk"), (b"q\r", "q退出"), (b"common\r", "common"),
        (b"q\r", "q退出"), (b"status\r", "status")]
@@ -162,7 +166,7 @@ t.close()
 print()
 print("=== E. 存档菜单 ===")
 t = Term(fresh=True)
-t.send(b"1\r"); t.send(b"quit\r", 0.4)     # 建 1 个存档
+t.send(b"\r"); t.send(b"\r"); t.send(b"quit\r", 0.4)   # 建 1 个存档
 t2 = Term(fresh=False)
 txt = t2.text()          # 不 clearbuf：存档列表在初始输出里
 check("存档列表可见", "存档" in txt, "")

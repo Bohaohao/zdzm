@@ -10,9 +10,12 @@ SCHEMA = 1
 
 PERSIST = [
     "char_id", "cls", "level", "xp", "gold",
+    "nickname",                              # 玩家自定义昵称
     "skills", "passives", "skill_points",
+    "common",                                # 通用被动等级
     "equipped", "bag", "pity",
     "chapter_unlocks", "route_completion",
+    "region_clears", "collect_done", "titles",
     "stage", "mode",
 ]
 
@@ -70,6 +73,7 @@ def list_saves():
                 d = json.load(f)
             out.append({
                 "char_id": d.get("char_id", fn[:-5]),
+                "nickname": d.get("nickname", ""),
                 "cls": d.get("cls", "C01"),
                 "level": d.get("level", 1),
                 "stage": d.get("stage", "1-1"),

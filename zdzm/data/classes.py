@@ -12,11 +12,16 @@
 """
 
 CLASSES = {
+    # unlocked=False 的职业只在创建界面展示，不可选
+    "C02": {"name": "唐僧", "unlocked": False, "note": "敬请期待"},
+    "C03": {"name": "八戒", "unlocked": False, "note": "敬请期待"},
+
     "C01": {
         "key": "C01",
         "name": "破妄",
         "weapon": "长兵",
         "resource": "zhan",
+        "unlocked": True,
         "resource_name": "战势",
         # threshold：资源涨到阈值触发状态（战势→洞明），上限提高时阈值同步
         # pool：资源是消耗池（法力），上限提高不影响任何阈值

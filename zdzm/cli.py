@@ -109,7 +109,8 @@ def show_status(p, camp):
         lines.append("进度 %s %s   %s" % (camp.stage, st_now["name"], camp.mode))
     lines.append("已通 %d 关   死亡 %d 次   背包 %d/%d" % (
         len(camp.cleared), camp.deaths, len(p["bag"]), gear.BAG_MAX))
-    return panel("%s Lv.%d" % (C.CLASSES[p["cls"]]["name"], p["level"]), lines)
+    disp = p.get("nickname") or C.CLASSES[p["cls"]]["name"]
+    return panel("%s Lv.%d" % (disp, p["level"]), lines)
 
 
 def show_gear(p):
@@ -795,26 +796,86 @@ def make_logger(camp_ref, quiet=False):
     return say, on_kill
 
 
-def new_player(seed=None):
+def new_player(seed=None, nickname=""):
     p = make_player("C01", 1)
     auto_learn(p)
     p["char_id"] = os.urandom(6).hex()
+    p["nickname"] = nickname.strip() or ("破妄" + p["char_id"][:4])
     return p
+
+
+def create_character():
+    """创建界面：↑↓ 选职业，回车确认，输入昵称。未开放职业只能看。"""
+    rows = [(k, v) for k, v in C.CLASSES.items()]
+    rows.sort(key=lambda x: (not x[1].get("unlocked", False), x[0]))
+    idx = 0
+
+    if not sys.stdin.isatty():
+        # 非交互：默认选第一个解锁职业
+        for k, cls in rows:
+            if cls.get("unlocked", False):
+                return new_player(nickname="")
+        return None
+
+    MENU.place(9)
+    while True:
+            MENU.place(9)
+            print(c("── 创建角色 " + "─" * 42, "cyan"))
+            print()
+            for i, (k, cls) in enumerate(rows[:9]):
+                unlocked = cls.get("unlocked", False)
+                mark = "▶" if i == idx else " "
+                name = cls["name"]
+                if unlocked:
+                    line = "  %s %s  %s" % (mark, k, name)
+                else:
+                    line = "  %s %s  %s  %s" % (mark, k, name, c("（未开放）", "gray"))
+                print(c(line, "bold") if i == idx and unlocked else line)
+            print()
+            print(c("  ↑↓ 选择职业   回车 确认   q 返回", "gray"))
+            sys.stdout.flush()
+
+            key = MENU._read_key()
+            if key in ("back", "quit"):
+                return None
+            if key == "up":
+                idx = (idx - 1) % len(rows)
+            elif key == "down":
+                idx = (idx + 1) % len(rows)
+            elif key == "enter":
+                k, cls = rows[idx]
+                if not cls.get("unlocked", False):
+                    print(c("  该职业暂未开放", "red"))
+                    time.sleep(0.8)
+                    continue
+                MENU.clear_menu()
+                try:
+                    nick = input(c("  昵称（回车用默认）: ", "cyan")).strip()
+                except EOFError:
+                    nick = ""
+                return new_player(nickname=nick)
 
 
 def load_or_new(args):
     if args.new:
-        return new_player(), None
+        p = create_character()
+        if p is None:
+            p = new_player()
+        return p, None
     while True:
         saves = storage.list_saves()
         if not saves:
-            print(c("  没有存档，新建角色", "gray"))
-            return new_player(), None
+            print(c("  没有存档，创建角色", "gray"))
+            p = create_character()
+            if p is None:
+                p = new_player()
+            return p, None
         print()
         print(c("── 存档 " + "─" * 44, "gray"))
         for i, s2 in enumerate(saves[:9]):
-            print("  %s Lv.%-3d %-4s  %s" % (
-                c("[%d]" % (i + 1), "yellow"), s2["level"], s2["stage"],
+            nick = s2.get("nickname") or c("（未命名）", "gray")
+            print("  %s %-10s Lv.%-3d %-4s  %s" % (
+                c("[%d]" % (i + 1), "yellow"), nick, s2["level"], s2["stage"],
                 time.strftime("%m-%d %H:%M", time.localtime(s2["saved_at"]))))
         print("  %s 新建角色" % c("[n]", "yellow"))
         print("  %s 删除某个存档    %s 删除全部" % (c("[d1]", "red"), c("[da]", "red")))
@@ -826,7 +887,10 @@ def load_or_new(args):
             return new_player(), None
 
         if raw == "n":
-            return new_player(), None
+            p = create_character()
+            if p is None:
+                continue
+            return p, None
 
         if raw == "da":
             try:
@@ -904,9 +968,9 @@ def main():
 
     print()
     print(c("═══ 造梦终端 ═══", "bold"))
+    disp = p.get("nickname") or C.CLASSES[p["cls"]]["name"]
     print("  %s Lv.%d   %s %s  %s" % (
-        C.CLASSES[p["cls"]]["name"], p["level"],
-        camp.stage, Z.get(camp.stage)["name"], camp.mode))
+        disp, p["level"], camp.stage, Z.get(camp.stage)["name"], camp.mode))
     print(c("  敲 help 看命令", "gray"))
     print()
 

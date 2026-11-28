@@ -18,6 +18,7 @@ def make_player(cls_key="C01", level=1, actor_id="p1"):
         "side": "player",
         "cls": cls_key,
         "name": cls["name"],
+        "nickname": "",                 # 玩家自定义昵称（存档列表用）
         "level": level,
         "alive": True,
 
