@@ -8,16 +8,16 @@ import sys
 
 IS_WIN = (os.name == "nt")
 
-CL = {"reset": "\033[0m", "dim": "\033[2m", "bold": "\033[1m",
-      "cyan": "\033[36m", "green": "\033[32m", "gold": "\033[38;5;220m",
-      "gray": "\033[90m", "red": "\033[31m"}
-COLOR = True
+from zdzm.ui import term as _t
+
+CL = _t._CMAP
+COLOR = _t.COLOR
 
 
 def _c(t, k=None):
-    if not COLOR or not k:
-        return str(t)
-    return CL.get(k, "") + str(t) + CL["reset"]
+    return _t.c(_t.line(t) if not _t.USE_UNICODE else t, k)
+
+_MENU_LINES = 0
 
 
 def _read_key():
@@ -80,6 +80,7 @@ def _read_key_unix():
 
 
 _MENU_LINES = 0
+
 
 
 def place(height):

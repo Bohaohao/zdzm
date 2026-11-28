@@ -30,18 +30,14 @@ from zdzm.data import common_passives as CP
 from zdzm.data.skills import SKILLS, PASSIVES
 from zdzm.data import artifacts as A
 
-CL = {"reset": "\033[0m", "dim": "\033[2m", "bold": "\033[1m",
-      "red": "\033[31m", "green": "\033[32m", "yellow": "\033[33m",
-      "gold": "\033[38;5;220m", "gray": "\033[90m", "cyan": "\033[36m",
-      "blue": "\033[34m", "magenta": "\033[35m"}
-COLOR = True
+from zdzm.ui import term as _t
+
+CL = _t._CMAP
+COLOR = _t.COLOR
 
 
 def c(t, k=None):
-    if not COLOR or not k:
-        return str(t)
-    return CL.get(k, "") + str(t) + CL["reset"]
-
+    return _t.c(_t.line(t) if not _t.USE_UNICODE else t, k)
 
 import re as _re
 import unicodedata as _ud
@@ -49,36 +45,60 @@ ANSI_RE = _re.compile(r"\033\[[0-9;]*m")
 
 
 def vw(s):
-    """显示宽度：CJK 算 2，ANSI 序列算 0。"""
-    return sum(2 if _ud.east_asian_width(ch) in ("W", "F") else 1
-               for ch in ANSI_RE.sub("", str(s)))
+    return _t.vw(s)
 
 
 def pad(s, w):
-    return str(s) + " " * max(0, w - vw(s))
+    return _t.pad(_t.line(s) if not _t.USE_UNICODE else s, w)
 
 
 def bar(cur, mx, width=14, color="green"):
-    pct = 0 if mx <= 0 else max(0.0, min(1.0, cur / float(mx)))
-    f = int(round(pct * width))
-    return c("█" * f, color) + c("░" * (width - f), "gray")
+    return _t.bar(cur, mx, width, color)
 
 
 def panel(title, lines, width=54):
+    """统一面板渲染，框线按终端能力自动 Unicode/ASCII。"""
     inner = width - 4
-    head = (c("╭─ ", "cyan") + c(title, "bold")
-            + c(" " + "─" * max(0, inner - vw(title) - 1) + "╮", "cyan"))
+    if _t.USE_UNICODE:
+        head = (c("╭─ ", "cyan") + c(_t.line(title), "bold")
+                + c(" " + "─" * max(0, inner - vw(title) - 1) + "╮", "cyan"))
+        sep = c("├" + "─" * (width - 2) + "┤", "cyan")
+        bottom = c("╰" + "─" * (width - 2) + "╯", "cyan")
+        vbar = c("│", "cyan")
+    else:
+        head = c("+--- " + _t.line(title) + " " +
+                 "-" * max(0, inner - vw(title) - 2) + "+", "cyan")
+        sep = c("+" + "-" * (width - 2) + "+", "cyan")
+        bottom = c("+" + "-" * (width - 2) + "+", "cyan")
+        vbar = c("|", "cyan")
     out = [head]
     for ln in lines:
         if ln == "-":
-            out.append(c("├" + "─" * (width - 2) + "┤", "cyan"))
+            out.append(sep)
         elif ln.startswith("## "):
-            t2 = ln[3:]
-            seg = "─ " + t2 + " "
-            out.append(c("├" + seg + "─" * max(0, width - 2 - vw(seg)) + "┤", "cyan"))
+            t2 = _t.line(ln[3:])
+            if _t.USE_UNICODE:
+                seg = "─ " + t2 + " "
+                out.append(c("├" + seg + "─" * max(0, width - 2 - vw(seg)) + "┤", "cyan"))
+            else:
+                seg = "- " + t2 + " "
+                out.append(c("+" + seg + "-" * max(0, width - 2 - vw(seg)) + "+", "cyan"))
         else:
-            out.append(c("│", "cyan") + " " + pad(ln, inner) + " " + c("│", "cyan"))
-    out.append(c("╰" + "─" * (width - 2) + "╯", "cyan"))
+            # 内容行：把 ANSI 拆开，只降级文字部分，保住颜色
+            plain = _t.ANSI_RE.sub("", str(ln))
+            safe = _t.line(plain)
+            if safe != plain:
+                # 简单替换：按 ANSI 段重建（保留原颜色结构）
+                toks = _t.ANSI_RE.split(str(ln))
+                ansis = _t.ANSI_RE.findall(str(ln))
+                rebuilt = []
+                for i, tk in enumerate(toks):
+                    rebuilt.append(_t.line(tk))
+                    if i < len(ansis):
+                        rebuilt.append(ansis[i])
+                safe = "".join(rebuilt)
+            out.append(vbar + " " + pad(safe, inner) + " " + vbar)
+    out.append(bottom)
     return "\n".join(out)
 
 
@@ -153,11 +173,11 @@ def common_menu(p):
         n = len(rows)
         height = n + 3
         MENU.place(height)
-        print("  " + c("◆ 通用被动", "cyan") + "   " +
+        print("  " + c(_t.sym("◆") + " 通用被动", "cyan") + "   " +
               c("金币 %d" % p.get("gold", 0), "gold"))
         for i, c0 in enumerate(rows):
             lv = CP.level_of(p, c0["key"])
-            mark = "▶" if i == idx else " "
+            mark = _t.sym("▶") if i == idx else " "
             shown = CP.label(c0, lv)
             price = CP.cost_of(lv)
             tail = c("升级 %d" % price, "green") if price is not None else c("已满", "gold")
@@ -217,7 +237,7 @@ def _bag_loop(p, MENU):
         height = gear.BAG_PAGE + 5
         MENU.place(height)
 
-        print("  " + c("◆ 背包", "cyan") + "   " +
+        print("  " + c(_t.sym("◆") + " 背包", "cyan") + "   " +
               c("%d/%d 格   第 %d/%d 页" % (n, gear.BAG_MAX, page + 1, pages), "gray"))
         if not rows:
             print(c("  （空）", "gray"))
@@ -225,10 +245,10 @@ def _bag_loop(p, MENU):
                 print("")
         for i, it in enumerate(rows):
             gidx = start + i
-            mark = "▶" if gidx == idx else " "
+            mark = _t.sym("▶") if gidx == idx else " "
             lock = c("锁", "gold") if it.get("locked") else " "
             _, g = gear.best_slot(p, it)
-            arrow = c("↑", "green") if g > 0.01 else c("↓", "gray")
+            arrow = c(_t.sym("↑"), "green") if g > 0.01 else c(_t.sym("↓"), "gray")
             line = "  %s[%2d] %s %s %s %s" % (
                 mark, gidx, lock, arrow, pad(gear.equip_line(it), 26),
                 c("评分%d" % int(gear.score(it)), "gray"))
@@ -309,9 +329,9 @@ def show_bag(p):
         if it.get("locked"):
             mark = c("锁", "gold")
         elif g > 0.01:
-            mark = c("↑", "green")
+            mark = c(_t.sym("↑"), "green")
         else:
-            mark = c("↓", "gray")
+            mark = c(_t.sym("↓"), "gray")
         score = int(gear.score(it))
         lines.append("%s %s %s %s" % (
             ("[%2d]" % i), mark, pad(gear.equip_line(it), 28),
@@ -538,13 +558,13 @@ def skill_menu(p):
                 box.append(c("│", "cyan") + " " + pad(ln, inner - 1) + c("│", "cyan"))
             box.append(c("╰" + "─" * inner + "╯", "cyan"))
 
-            print("  " + c("◆ 技能加点", "cyan") + "   " +
+            print("  " + c(_t.sym("◆") + " 技能加点", "cyan") + "   " +
                   c("技能点 %d" % p["skill_points"], "gold"))
             for i, (k, name, lv, is_active, st) in enumerate(rows):
-                mark = "▶" if i == idx else " "
+                mark = _t.sym("▶") if i == idx else " "
                 tag = "" if is_active else " 被动"
                 if st == "learned":
-                    slot = "●" if (is_active and k in p["loadout"]) else " "
+                    slot = _t.sym("●") if (is_active and k in p["loadout"]) else " "
                     left = "  %s%s %s %d/5%s" % (mark, slot, pad(name, 9), lv, tag)
                     if lv >= 5:
                         left += " MAX"
@@ -599,11 +619,11 @@ def loadout_menu(p):
     while True:
         height = 5 + 2          # 标题 + 5 个槽 + 提示
         MENU.place(height)
-        print("  " + c("◆ 技能装配", "cyan") + "   " + c("5 个主动槽", "gray"))
+        print("  " + c(_t.sym("◆") + " 技能装配", "cyan") + "   " + c("5 个主动槽", "gray"))
         for i in range(5):
             k = slots[i]
             name = SKILLS[k]["name"] if k else c("（空）", "gray")
-            mark = "▶" if i == idx else " "
+            mark = _t.sym("▶") if i == idx else " "
             line = "  %s [%d] %-10s" % (mark, i + 1, name)
             print(c(line, "bold") if i == idx else line)
         print(c("  ↑↓ 选择槽位   回车 更换   d 卸下   q 返回", "gray"))
@@ -824,7 +844,7 @@ def create_character():
             print()
             for i, (k, cls) in enumerate(rows[:9]):
                 unlocked = cls.get("unlocked", False)
-                mark = "▶" if i == idx else " "
+                mark = _t.sym("▶") if i == idx else " "
                 name = cls["name"]
                 if unlocked:
                     line = "  %s %s  %s" % (mark, k, name)

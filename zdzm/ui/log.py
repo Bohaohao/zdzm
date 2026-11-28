@@ -1,21 +1,13 @@
 # -*- coding: utf-8 -*-
 """事件 -> 日志行。这里只读 Event，不碰 State。"""
-import os
+from zdzm.ui import term as _t
 
-COLOR = True
-
-C = {
-    "reset": "\033[0m", "dim": "\033[2m", "bold": "\033[1m",
-    "red": "\033[31m", "green": "\033[32m", "yellow": "\033[33m",
-    "blue": "\033[34m", "cyan": "\033[36m", "gray": "\033[90m",
-    "gold": "\033[38;5;220m", "pink": "\033[38;5;211m",
-}
+COLOR = _t.COLOR
+C = _t._CMAP
 
 
 def c(text, color=None):
-    if not COLOR or not color:
-        return str(text)
-    return C.get(color, "") + str(text) + C["reset"]
+    return _t.c(text, color)
 
 
 def enable_ansi():
